@@ -45,10 +45,10 @@ class PairMombKokkos : public PairMomb {
 
   struct params_momb{
     KOKKOS_INLINE_FUNCTION
-    params_momb(){cutsq=0,d0=0;alpha=0;r0=0;offset=0;}
+    params_momb(){cutsq=0,d0=0;alpha=0;r0=0;c=0;rr=0;offset=0;}
     KOKKOS_INLINE_FUNCTION
-    params_momb(int i){cutsq=0,d0=0;alpha=0;r0=0;offset=0;}
-    F_FLOAT cutsq,d0,alpha,r0,offset;
+    params_momb(int i){cutsq=0,d0=0;alpha=0;r0=0;c=0;rr=0;offset=0;}
+    F_FLOAT cutsq,d0,alpha,r0,c,rr,offset;
   };
 
  protected:

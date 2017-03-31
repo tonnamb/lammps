@@ -13,29 +13,29 @@
 
 #ifdef PAIR_CLASS
 
-PairStyle(morse/kk,PairMorseKokkos<LMPDeviceType>)
-PairStyle(morse/kk/device,PairMorseKokkos<LMPDeviceType>)
-PairStyle(morse/kk/host,PairMorseKokkos<LMPHostType>)
+PairStyle(momb/kk,PairMombKokkos<LMPDeviceType>)
+PairStyle(momb/kk/device,PairMombKokkos<LMPDeviceType>)
+PairStyle(momb/kk/host,PairMombKokkos<LMPHostType>)
 
 #else
 
-#ifndef LMP_PAIR_MORSE_KOKKOS_H
-#define LMP_PAIR_MORSE_KOKKOS_H
+#ifndef LMP_PAIR_MOMB_H
+#define LMP_PAIR_MOMB_H
 
 #include "pair_kokkos.h"
-#include "pair_morse.h"
+#include "pair_momb.h"
 #include "neigh_list_kokkos.h"
 
 namespace LAMMPS_NS {
 
 template<class DeviceType>
-class PairMorseKokkos : public PairMorse {
+class PairMombKokkos : public PairMomb {
  public:
   enum {EnabledNeighFlags=FULL|HALFTHREAD|HALF|N2};
   enum {COUL_FLAG=0};
   typedef DeviceType device_type;
-  PairMorseKokkos(class LAMMPS *);
-  virtual ~PairMorseKokkos();
+  PairMombKokkos(class LAMMPS *);
+  virtual ~PairMombKokkos();
 
   void compute(int, int);
 
@@ -43,11 +43,11 @@ class PairMorseKokkos : public PairMorse {
   void init_style();
   double init_one(int, int);
 
-  struct params_morse{
+  struct params_momb{
     KOKKOS_INLINE_FUNCTION
-    params_morse(){cutsq=0,d0=0;alpha=0;r0=0;offset=0;}
+    params_momb(){cutsq=0,d0=0;alpha=0;r0=0;offset=0;}
     KOKKOS_INLINE_FUNCTION
-    params_morse(int i){cutsq=0,d0=0;alpha=0;r0=0;offset=0;}
+    params_momb(int i){cutsq=0,d0=0;alpha=0;r0=0;offset=0;}
     F_FLOAT cutsq,d0,alpha,r0,offset;
   };
 
@@ -69,9 +69,9 @@ class PairMorseKokkos : public PairMorse {
   }
 
 
-  Kokkos::DualView<params_morse**,Kokkos::LayoutRight,DeviceType> k_params;
-  typename Kokkos::DualView<params_morse**,Kokkos::LayoutRight,DeviceType>::t_dev_const_um params;
-  params_morse m_params[MAX_TYPES_STACKPARAMS+1][MAX_TYPES_STACKPARAMS+1]; 
+  Kokkos::DualView<params_momb**,Kokkos::LayoutRight,DeviceType> k_params;
+  typename Kokkos::DualView<params_momb**,Kokkos::LayoutRight,DeviceType>::t_dev_const_um params;
+  params_momb m_params[MAX_TYPES_STACKPARAMS+1][MAX_TYPES_STACKPARAMS+1]; 
   F_FLOAT m_cutsq[MAX_TYPES_STACKPARAMS+1][MAX_TYPES_STACKPARAMS+1];
   typename ArrayTypes<DeviceType>::t_x_array_randomread x;
   typename ArrayTypes<DeviceType>::t_x_array c_x;
@@ -95,20 +95,20 @@ class PairMorseKokkos : public PairMorse {
   int nlocal,nall,eflag,vflag;
 
   void allocate();
-  friend class PairComputeFunctor<PairMorseKokkos,FULL,true>;
-  friend class PairComputeFunctor<PairMorseKokkos,HALF,true>;
-  friend class PairComputeFunctor<PairMorseKokkos,HALFTHREAD,true>;
-  friend class PairComputeFunctor<PairMorseKokkos,N2,true>;
-  friend class PairComputeFunctor<PairMorseKokkos,FULL,false>;
-  friend class PairComputeFunctor<PairMorseKokkos,HALF,false>;
-  friend class PairComputeFunctor<PairMorseKokkos,HALFTHREAD,false>;
-  friend class PairComputeFunctor<PairMorseKokkos,N2,false>;
-  friend EV_FLOAT pair_compute_neighlist<PairMorseKokkos,FULL,void>(PairMorseKokkos*,NeighListKokkos<DeviceType>*);
-  friend EV_FLOAT pair_compute_neighlist<PairMorseKokkos,HALF,void>(PairMorseKokkos*,NeighListKokkos<DeviceType>*);
-  friend EV_FLOAT pair_compute_neighlist<PairMorseKokkos,HALFTHREAD,void>(PairMorseKokkos*,NeighListKokkos<DeviceType>*);
-  friend EV_FLOAT pair_compute_neighlist<PairMorseKokkos,N2,void>(PairMorseKokkos*,NeighListKokkos<DeviceType>*);
-  friend EV_FLOAT pair_compute<PairMorseKokkos,void>(PairMorseKokkos*,NeighListKokkos<DeviceType>*);
-  friend void pair_virial_fdotr_compute<PairMorseKokkos>(PairMorseKokkos*);
+  friend class PairComputeFunctor<PairMombKokkos,FULL,true>;
+  friend class PairComputeFunctor<PairMombKokkos,HALF,true>;
+  friend class PairComputeFunctor<PairMombKokkos,HALFTHREAD,true>;
+  friend class PairComputeFunctor<PairMombKokkos,N2,true>;
+  friend class PairComputeFunctor<PairMombKokkos,FULL,false>;
+  friend class PairComputeFunctor<PairMombKokkos,HALF,false>;
+  friend class PairComputeFunctor<PairMombKokkos,HALFTHREAD,false>;
+  friend class PairComputeFunctor<PairMombKokkos,N2,false>;
+  friend EV_FLOAT pair_compute_neighlist<PairMombKokkos,FULL,void>(PairMombKokkos*,NeighListKokkos<DeviceType>*);
+  friend EV_FLOAT pair_compute_neighlist<PairMombKokkos,HALF,void>(PairMombKokkos*,NeighListKokkos<DeviceType>*);
+  friend EV_FLOAT pair_compute_neighlist<PairMombKokkos,HALFTHREAD,void>(PairMombKokkos*,NeighListKokkos<DeviceType>*);
+  friend EV_FLOAT pair_compute_neighlist<PairMombKokkos,N2,void>(PairMombKokkos*,NeighListKokkos<DeviceType>*);
+  friend EV_FLOAT pair_compute<PairMombKokkos,void>(PairMombKokkos*,NeighListKokkos<DeviceType>*);
+  friend void pair_virial_fdotr_compute<PairMombKokkos>(PairMombKokkos*);
 };
 
 }
@@ -128,7 +128,7 @@ E: Cannot use Kokkos pair style with rRESPA inner/middle
 
 Self-explanatory.
 
-E: Cannot use chosen neighbor list style with morse/kk
+E: Cannot use chosen neighbor list style with momb/kk
 
 That style is not supported by Kokkos.
 

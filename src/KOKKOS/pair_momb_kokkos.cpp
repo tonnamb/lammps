@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "pair_morse_kokkos.h"
+#include "pair_momb_kokkos.h"
 #include "kokkos.h"
 #include "atom_kokkos.h"
 #include "comm.h"
@@ -44,7 +44,7 @@ using namespace MathConst;
 /* ---------------------------------------------------------------------- */
 
 template<class DeviceType>
-PairMorseKokkos<DeviceType>::PairMorseKokkos(LAMMPS *lmp) : PairMorse(lmp)
+PairMombKokkos<DeviceType>::PairMombKokkos(LAMMPS *lmp) : PairMomb(lmp)
 {
   respa_enable = 0;
 
@@ -58,7 +58,7 @@ PairMorseKokkos<DeviceType>::PairMorseKokkos(LAMMPS *lmp) : PairMorse(lmp)
 /* ---------------------------------------------------------------------- */
 
 template<class DeviceType>
-PairMorseKokkos<DeviceType>::~PairMorseKokkos()
+PairMombKokkos<DeviceType>::~PairMombKokkos()
 {
   if (allocated) {
     memory->destroy_kokkos(k_eatom,eatom);
@@ -74,7 +74,7 @@ PairMorseKokkos<DeviceType>::~PairMorseKokkos()
 /* ---------------------------------------------------------------------- */
 
 template<class DeviceType>
-void PairMorseKokkos<DeviceType>::cleanup_copy() {
+void PairMombKokkos<DeviceType>::cleanup_copy() {
   // WHY needed: this prevents parent copy from deallocating any arrays
   allocated = 0;
   cutsq = NULL;
@@ -85,7 +85,7 @@ void PairMorseKokkos<DeviceType>::cleanup_copy() {
 /* ---------------------------------------------------------------------- */
 
 template<class DeviceType>
-void PairMorseKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
+void PairMombKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
 {
   eflag = eflag_in;
   vflag = vflag_in;
@@ -130,7 +130,7 @@ void PairMorseKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
 
   // loop over neighbors of my atoms
 
-  EV_FLOAT ev = pair_compute<PairMorseKokkos<DeviceType>,void >(this,(NeighListKokkos<DeviceType>*)list);
+  EV_FLOAT ev = pair_compute<PairMombKokkos<DeviceType>,void >(this,(NeighListKokkos<DeviceType>*)list);
 
   if (eflag_global) eng_vdwl += ev.evdwl;
   if (vflag_global) {
@@ -158,7 +158,7 @@ void PairMorseKokkos<DeviceType>::compute(int eflag_in, int vflag_in)
 template<class DeviceType>
 template<bool STACKPARAMS, class Specialisation>
 KOKKOS_INLINE_FUNCTION
-F_FLOAT PairMorseKokkos<DeviceType>::
+F_FLOAT PairMombKokkos<DeviceType>::
 compute_fpair(const F_FLOAT& rsq, const int& i, const int&j, const int& itype, const int& jtype) const {
   (void) i;
   (void) j;
@@ -180,7 +180,7 @@ compute_fpair(const F_FLOAT& rsq, const int& i, const int&j, const int& itype, c
 template<class DeviceType>
 template<bool STACKPARAMS, class Specialisation>
 KOKKOS_INLINE_FUNCTION
-F_FLOAT PairMorseKokkos<DeviceType>::
+F_FLOAT PairMombKokkos<DeviceType>::
 compute_evdwl(const F_FLOAT& rsq, const int& i, const int&j, const int& itype, const int& jtype) const {
   (void) i;
   (void) j;
@@ -203,15 +203,15 @@ compute_evdwl(const F_FLOAT& rsq, const int& i, const int&j, const int& itype, c
 ------------------------------------------------------------------------- */
 
 template<class DeviceType>
-void PairMorseKokkos<DeviceType>::allocate()
+void PairMombKokkos<DeviceType>::allocate()
 {
-  PairMorse::allocate();
+  PairMomb::allocate();
 
   int n = atom->ntypes;
   memory->destroy(cutsq);
   memory->create_kokkos(k_cutsq,cutsq,n+1,n+1,"pair:cutsq");
   d_cutsq = k_cutsq.template view<DeviceType>();
-  k_params = Kokkos::DualView<params_morse**,Kokkos::LayoutRight,DeviceType>("PairMorse::params",n+1,n+1);
+  k_params = Kokkos::DualView<params_momb**,Kokkos::LayoutRight,DeviceType>("PairMomb::params",n+1,n+1);
   params = k_params.d_view;
 }
 
@@ -220,11 +220,11 @@ void PairMorseKokkos<DeviceType>::allocate()
 ------------------------------------------------------------------------- */
 
 template<class DeviceType>
-void PairMorseKokkos<DeviceType>::settings(int narg, char **arg)
+void PairMombKokkos<DeviceType>::settings(int narg, char **arg)
 {
   if (narg > 2) error->all(FLERR,"Illegal pair_style command");
 
-  PairMorse::settings(1,arg);
+  PairMomb::settings(1,arg);
 }
 
 /* ----------------------------------------------------------------------
@@ -232,9 +232,9 @@ void PairMorseKokkos<DeviceType>::settings(int narg, char **arg)
 ------------------------------------------------------------------------- */
 
 template<class DeviceType>
-void PairMorseKokkos<DeviceType>::init_style()
+void PairMombKokkos<DeviceType>::init_style()
 {
-  PairMorse::init_style();
+  PairMomb::init_style();
 
   // error if rRESPA with inner levels
 
@@ -267,7 +267,7 @@ void PairMorseKokkos<DeviceType>::init_style()
     neighbor->requests[irequest]->full = 0;
     neighbor->requests[irequest]->half = 0;
   } else {
-    error->all(FLERR,"Cannot use chosen neighbor list style with morse/kk");
+    error->all(FLERR,"Cannot use chosen neighbor list style with momb/kk");
   }
 }
 
@@ -276,9 +276,9 @@ void PairMorseKokkos<DeviceType>::init_style()
 ------------------------------------------------------------------------- */
 // Rewrite this.
 template<class DeviceType>
-double PairMorseKokkos<DeviceType>::init_one(int i, int j)
+double PairMombKokkos<DeviceType>::init_one(int i, int j)
 {
-  double cutone = PairMorse::init_one(i,j);
+  double cutone = PairMomb::init_one(i,j);
 
   k_params.h_view(i,j).d0     = d0[i][j];
   k_params.h_view(i,j).alpha  = alpha[i][j];
@@ -302,9 +302,9 @@ double PairMorseKokkos<DeviceType>::init_one(int i, int j)
 
 
 namespace LAMMPS_NS {
-template class PairMorseKokkos<LMPDeviceType>;
+template class PairMombKokkos<LMPDeviceType>;
 #ifdef KOKKOS_HAVE_CUDA
-template class PairMorseKokkos<LMPHostType>;
+template class PairMombKokkos<LMPHostType>;
 #endif
 }
 

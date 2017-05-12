@@ -162,19 +162,30 @@ F_FLOAT PairMombKokkos<DeviceType>::
 compute_fpair(const F_FLOAT& rsq, const int& i, const int&j, const int& itype, const int& jtype) const {
   (void) i;
   (void) j;
-  const F_FLOAT rr = sqrt(rsq);
-  const F_FLOAT r0 = STACKPARAMS ? m_params[itype][jtype].r0 : params(itype,jtype).r0;
+  const F_FLOAT r2inv = 1.0/rsq;
+  const F_FLOAT r6inv = r2inv*r2inv*r2inv;
+  const F_FLOAT r = sqrt(rsq);
   const F_FLOAT d0 = STACKPARAMS ? m_params[itype][jtype].d0 : params(itype,jtype).d0;
   const F_FLOAT aa = STACKPARAMS ? m_params[itype][jtype].alpha : params(itype,jtype).alpha;
-  const F_FLOAT dr = rr - r0;
+  const F_FLOAT r0 = STACKPARAMS ? m_params[itype][jtype].r0 : params(itype,jtype).r0;
+  const F_FLOAT c = STACKPARAMS ? m_params[itype][jtype].c : params(itype,jtype).c;
+  const F_FLOAT rr = STACKPARAMS ? m_params[itype][jtype].rr : params(itype,jtype).rr;
+  const F_FLOAT dr = r - r0;
   
   // U  =  d0 * [ exp( -2*a*(x-r0)) - 2*exp(-a*(x-r0)) ]
   // f  = -2*a*d0*[ -exp( -2*a*(x-r0) ) + exp( -a*(x-r0) ) ] * grad(r)
   //    = +2*a*d0*[  exp( -2*a*(x-r0) ) - exp( -a*(x-r0) ) ] * grad(r)
-  const F_FLOAT dexp    = exp( -aa*dr );
+  const F_FLOAT dexp = exp( -aa*dr );
   const F_FLOAT forcelj = 2*aa*d0*dexp*(dexp-1.0);
 
-  return forcelj / rr;
+  const F_FLOAT ddexp = exp(-dscale * (r/rr - 1.0));
+  const F_FLOAT invexp = 1.0/(1+ddexp);
+
+  F_FLOAT fpair = forcelj / r;
+  fpair -= sscale*c * (invexp*invexp*ddexp*(-dscale/rr)*r6inv) / r;
+  fpair -= sscale*c * (6.0 * invexp * r6inv * r2inv);
+
+  return fpair;
 }
 
 template<class DeviceType>
@@ -184,18 +195,22 @@ F_FLOAT PairMombKokkos<DeviceType>::
 compute_evdwl(const F_FLOAT& rsq, const int& i, const int&j, const int& itype, const int& jtype) const {
   (void) i;
   (void) j;
-  const F_FLOAT rr = sqrt(rsq);
-  const F_FLOAT r0 = STACKPARAMS ? m_params[itype][jtype].r0 : params(itype,jtype).r0;
+  const F_FLOAT r2inv = 1.0/rsq;
+  const F_FLOAT r6inv = r2inv*r2inv*r2inv;
+  const F_FLOAT r = sqrt(rsq);
   const F_FLOAT d0 = STACKPARAMS ? m_params[itype][jtype].d0 : params(itype,jtype).d0;
   const F_FLOAT aa = STACKPARAMS ? m_params[itype][jtype].alpha : params(itype,jtype).alpha;
-  const F_FLOAT dr = rr - r0;
-  
-  // U  =  d0 * [ exp( -2*a*(x-r0)) - 2*exp(-a*(x-r0)) ]
-  // f  = -2*a*d0*[ -exp( -2*a*(x-r0) ) + exp( -a*(x-r0) ) ] * grad(r)
-  //    = +2*a*d0*[  exp( -2*a*(x-r0) ) - exp( -a*(x-r0) ) ] * grad(r)
+  const F_FLOAT r0 = STACKPARAMS ? m_params[itype][jtype].r0 : params(itype,jtype).r0;
+  const F_FLOAT c = STACKPARAMS ? m_params[itype][jtype].c : params(itype,jtype).c;
+  const F_FLOAT rr = STACKPARAMS ? m_params[itype][jtype].rr : params(itype,jtype).rr;
+  const F_FLOAT dr = r - r0;
   const F_FLOAT dexp    = exp( -aa*dr );
 
-  return d0 * dexp * ( dexp - 2.0 );
+  const F_FLOAT ddexp = exp(-dscale * (r/rr - 1.0));
+  const F_FLOAT invexp = 1.0/(1+ddexp);
+  const F_FLOAT grimme = sscale*c*r6inv*invexp
+
+  return d0 * dexp * ( dexp - 2.0 ) - grimme;
 }
 
 /* ----------------------------------------------------------------------
@@ -222,9 +237,9 @@ void PairMombKokkos<DeviceType>::allocate()
 template<class DeviceType>
 void PairMombKokkos<DeviceType>::settings(int narg, char **arg)
 {
-  if (narg > 2) error->all(FLERR,"Illegal pair_style command");
+  if (narg != 3) error->all(FLERR,"Illegal pair_style command");
 
-  PairMomb::settings(1,arg);
+  PairMomb::settings(3,arg);
 }
 
 /* ----------------------------------------------------------------------
@@ -283,6 +298,8 @@ double PairMombKokkos<DeviceType>::init_one(int i, int j)
   k_params.h_view(i,j).d0     = d0[i][j];
   k_params.h_view(i,j).alpha  = alpha[i][j];
   k_params.h_view(i,j).r0     = r0[i][j];
+  k_params.h_view(i,j).c      = c[i][j];
+  k_params.h_view(i,j).rr     = rr[i][j];
   k_params.h_view(i,j).offset = offset[i][j];
   k_params.h_view(i,j).cutsq  = cutone*cutone;
   k_params.h_view(j,i)        = k_params.h_view(i,j);
